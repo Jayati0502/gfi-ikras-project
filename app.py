@@ -7,6 +7,7 @@ import chromadb
 from chromadb.config import Settings
 from anthropic import Anthropic
 from dotenv import load_dotenv
+from typing import List, Dict
 
 # Enhanced Logging Configuration
 logging.basicConfig(
