@@ -1,6 +1,7 @@
 import os
 import logging
 import sys
+import traceback
 from typing import Dict, List
 
 from flask import Flask, request, jsonify
@@ -9,35 +10,46 @@ from chromadb.config import Settings
 from anthropic import Anthropic
 from dotenv import load_dotenv
 
-# Configure logging
+# Enhanced Logging Configuration
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('app_logs.log', mode='w')
+    ]
 )
 logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
+# Create Flask app
 app = Flask(__name__)
 
 class SupportSystem:
     def __init__(self):
-        logger.info("Initializing support system...")
+        logger.info("Starting SupportSystem initialization")
         try:
-            # Initialize ChromaDB with SQLite
+            # Log environment variables for debugging
+            logger.info("Environment Variables:")
+            for key, value in os.environ.items():
+                logger.debug(f"ENV: {key} = {'*****' if 'KEY' in key else value}")
+            
+            # Initialize ChromaDB
             logger.info("Setting up ChromaDB...")
             db_directory = "/app/data/chroma_db"
             os.makedirs(db_directory, exist_ok=True)
             
-            logger.info(f"Using ChromaDB directory: {db_directory}")
+            logger.info(f"ChromaDB Directory: {db_directory}")
+            
+            # ChromaDB Client Initialization
             self.db = chromadb.Client(Settings(
                 chroma_db_impl="duckdb+parquet",
                 persist_directory=db_directory
             ))
             
-            # Initialize collections in a simpler way
+            # Collection Initialization
             collections = {
                 'articles': 'support_articles',
                 'tickets': 'support_tickets',
@@ -48,27 +60,30 @@ class SupportSystem:
             self.collections = {}
             for key, name in collections.items():
                 try:
-                    logger.info(f"Getting collection {name}...")
+                    logger.info(f"Preparing collection: {name}")
                     self.collections[key] = self.db.get_or_create_collection(name)
                     logger.info(f"Collection {name} ready")
                 except Exception as e:
-                    logger.error(f"Error with collection {name}: {str(e)}")
-                    continue
-
-            # Initialize Anthropic
+                    logger.error(f"Collection {name} initialization error: {e}")
+                    logger.error(traceback.format_exc())
+            
+            # Anthropic Client Initialization
             api_key = os.getenv('ANTHROPIC_API_KEY')
             if not api_key:
-                raise ValueError("ANTHROPIC_API_KEY not found")
-                
-            self.client = Anthropic(api_key=api_key)
-            logger.info("Support system ready!")
+                raise ValueError("ANTHROPIC_API_KEY is missing")
             
+            logger.info("Initializing Anthropic client...")
+            self.client = Anthropic(api_key=api_key)
+            
+            logger.info("SupportSystem initialization complete")
+        
         except Exception as e:
-            logger.error(f"Error during initialization: {str(e)}")
+            logger.critical(f"Fatal initialization error: {e}")
+            logger.critical(traceback.format_exc())
             raise
 
     def get_search_keywords(self, query: str) -> List[str]:
-        """Use Claude to extract relevant search keywords"""
+        """Extract search keywords using Claude"""
         try:
             logger.info(f"Generating keywords for query: {query}")
             response = self.client.messages.create(
@@ -90,7 +105,7 @@ class SupportSystem:
             logger.info(f"Generated keywords: {keywords}")
             return keywords
         except Exception as e:
-            logger.error(f"Error getting keywords: {str(e)}")
+            logger.error(f"Keyword generation error: {e}")
             return [query]
 
     def search_knowledge_base(self, keywords: List[str], limit: int = 5) -> Dict:
@@ -118,7 +133,7 @@ class SupportSystem:
                             all_results.append((doc, meta, relevance))
                             logger.info(f"Match in {key}: {meta.get('title', '')} ({relevance:.2f})")
                 except Exception as e:
-                    logger.error(f"Error searching {key}: {str(e)}")
+                    logger.error(f"Search error in {key}: {e}")
                     continue
         
         if not all_results:
@@ -147,7 +162,7 @@ class SupportSystem:
         return top_results
 
     def generate_response(self, query: str, context: Dict) -> Dict:
-        """Generate response using Claude with found references"""
+        """Generate response using Claude"""
         try:
             logger.info("Generating response...")
             articles = []
@@ -212,16 +227,17 @@ class SupportSystem:
             }
             
         except Exception as e:
-            logger.error(f"Error generating response: {str(e)}")
+            logger.error(f"Response generation error: {e}")
+            logger.error(traceback.format_exc())
             return {
-                "answer": f"Error generating response: {str(e)}",
+                "answer": f"Error generating response: {e}",
                 "references": []
             }
 
     def answer_question(self, query: str) -> Dict:
         """Complete question-answering process"""
         try:
-            logger.info(f"\nProcessing question: {query}")
+            logger.info(f"Processing question: {query}")
             
             # Get keywords
             keywords = self.get_search_keywords(query)
@@ -239,14 +255,25 @@ class SupportSystem:
             return self.generate_response(query, search_results)
             
         except Exception as e:
-            logger.error(f"Error processing question: {str(e)}")
+            logger.error(f"Question processing error: {e}")
+            logger.error(traceback.format_exc())
             return {
-                "answer": f"Error processing question: {str(e)}",
+                "answer": f"Error processing question: {e}",
                 "references": []
             }
 
+# Global exception handler
+def handle_exception(exc_type, exc_value, exc_traceback):
+    logger.critical("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+sys.excepthook = handle_exception
+
 # Initialize support system
-support_system = SupportSystem()
+try:
+    support_system = SupportSystem()
+except Exception as e:
+    logger.critical(f"Failed to initialize support system: {e}")
+    support_system = None
 
 @app.route('/', methods=['GET'])
 def home():
@@ -263,12 +290,22 @@ def home():
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
-    return jsonify({"status": "healthy"})
+    status = "healthy" if support_system is not None else "initialization_failed"
+    return jsonify({
+        "status": status,
+        "collections": len(support_system.collections) if support_system else 0
+    })
 
 @app.route('/answer', methods=['POST'])
 def get_answer():
     """Get answer for a question"""
     try:
+        if support_system is None:
+            return jsonify({
+                "status": "error",
+                "message": "Support system not initialized"
+            }), 500
+
         data = request.json
         if not data or 'question' not in data:
             return jsonify({
@@ -276,7 +313,7 @@ def get_answer():
             }), 400
         
         question = data['question']
-        logger.info(f"\nReceived question: {question}")
+        logger.info(f"Received question: {question}")
         
         result = support_system.answer_question(question)
         
@@ -302,7 +339,8 @@ def get_answer():
         })
         
     except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
+        logger.error(f"Request processing error: {e}")
+        logger.error(traceback.format_exc())
         return jsonify({
             "status": "error",
             "message": str(e)
@@ -310,4 +348,5 @@ def get_answer():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
+    logger.info(f"Starting application on port {port}")
     app.run(host='0.0.0.0', port=port)

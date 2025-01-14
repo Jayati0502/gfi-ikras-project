@@ -1,7 +1,5 @@
-# Use an official Python runtime as a parent image
 FROM python:3.10-slim
 
-# Set the working directory in the container
 WORKDIR /app
 
 # Install system dependencies
@@ -10,21 +8,30 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create necessary directories
-RUN mkdir -p /app/data/chroma_db
+# Create directories
+RUN mkdir -p /app/data/chroma_db /app/logs
 
-# Copy the current directory contents into the container at /app
-COPY . /app
-
-# Install any needed packages specified in requirements.txt
+# Copy requirements first for better caching
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Make port 8080 available to the world outside this container
+# Copy entire project
+COPY . .
+
+# Expose port
 EXPOSE 8080
 
-# Define environment variable
-ENV PORT=8080
+# Environment variables
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
 
-# Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "app:app"]
+# Logging configuration
+ENV LOGGING_CONFIG=/app/logging.conf
+
+# Use gunicorn with more diagnostic options
+CMD ["gunicorn", \
+     "--bind", "0.0.0.0:${PORT}", \
+     "--log-level", "debug", \
+     "--capture-output", \
+     "--enable-stdio-inheritance", \
+     "app:app"]
