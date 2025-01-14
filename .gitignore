@@ -19,3 +19,12 @@ data/chroma_db/
 
 # Railway and Deployment
 .railway
+
+# Do NOT ignore these
+!.python-version
+!diagnose.py
+
+# But still ignore unnecessary files
+__pycache__/
+*.pyc
+venv/
