@@ -22,4 +22,4 @@ RUN mkdir -p /app/data/chroma_db
 ENV RAILWAY_VOLUME_MOUNT_PATH=/app/data/chroma_db
 
 # Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "src.app:app"]
+CMD gunicorn --bind 0.0.0.0:$PORT src.app:app
