@@ -26,5 +26,6 @@ ENV PORT=8000
 ENV PYTHONUNBUFFERED=1
 
 # Use gunicorn to run the app
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT} app:app"]
+
 

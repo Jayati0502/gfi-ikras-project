@@ -173,11 +173,8 @@ def get_answer():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    port = 8000  # Hardcoded for debugging
-    logger.info(f"Running on hardcoded port: {port}")
-    try:
-        app.run(host='0.0.0.0', port=port)
-    except ValueError as e:
-        logger.error(f"Invalid port: {port}. Error: {e}")
-        raise
+    port = os.getenv('PORT', '8000')  # Default to 8000
+    logger.info(f"Running on port: {port}")
+    app.run(host='0.0.0.0', port=int(port))
+
 
