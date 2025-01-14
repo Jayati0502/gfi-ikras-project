@@ -8,10 +8,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directories
-RUN mkdir -p /app/data/chroma_db /app/logs
+# Create necessary directories
+RUN mkdir -p /app/data/chroma_db
 
-# Copy requirements first for better caching
+# Copy requirements first
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -22,16 +22,8 @@ COPY . .
 EXPOSE 8080
 
 # Environment variables
-ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
+ENV PYTHONUNBUFFERED=1
 
-# Logging configuration
-ENV LOGGING_CONFIG=/app/logging.conf
-
-# Use gunicorn with more diagnostic options
-CMD ["gunicorn", \
-     "--bind", "0.0.0.0:${PORT}", \
-     "--log-level", "debug", \
-     "--capture-output", \
-     "--enable-stdio-inheritance", \
-     "app:app"]
+# Use exec form of CMD to properly handle environment variables
+CMD exec gunicorn --bind 0.0.0.0:$PORT app:app

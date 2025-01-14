@@ -7,3 +7,4 @@ startCommand = "gunicorn --bind 0.0.0.0:$PORT app:app"
 
 [env]
 PORT = "8080"
+PYTHONUNBUFFERED = "1"
