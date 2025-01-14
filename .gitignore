@@ -1,5 +1,21 @@
-.env
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+.env
 venv/
+
+# ChromaDB
+data/chroma_db/
+*.sqlite3
+
+# Logs
+*.log
+
+# OS Generated Files
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Railway and Deployment
+.railway

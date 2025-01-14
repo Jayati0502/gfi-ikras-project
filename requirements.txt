@@ -5,3 +5,5 @@ anthropic==0.7.7
 python-dotenv==1.0.0
 html2text==2024.2.26
 duckdb==0.9.2
+pydantic==2.6.0
+pydantic-settings==2.1.0
