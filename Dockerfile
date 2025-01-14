@@ -22,4 +22,4 @@ COPY . .
 ENV PORT=8080
 
 # Run the application
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 src.app:app
+CMD gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 src.app:app
