@@ -12,11 +12,11 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir -p /app/data/chroma_db
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy entire project
-COPY . .
+COPY . /app/
 
 # Expose port
 EXPOSE 8080
@@ -25,5 +25,5 @@ EXPOSE 8080
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
 
-# Use explicit command
+# Use gunicorn to run the app
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
