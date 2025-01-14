@@ -19,12 +19,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app/
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8000
 
 # Environment variables
-ENV PORT=8080
+ENV PORT=8000
 ENV PYTHONUNBUFFERED=1
 
 # Use gunicorn to run the app
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "app:app"]
 

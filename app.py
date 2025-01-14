@@ -173,7 +173,7 @@ def get_answer():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    port = 8080  # Hardcoded for debugging
+    port = 8000  # Hardcoded for debugging
     logger.info(f"Running on hardcoded port: {port}")
     try:
         app.run(host='0.0.0.0', port=port)
