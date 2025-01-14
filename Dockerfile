@@ -27,3 +27,4 @@ ENV PYTHONUNBUFFERED=1
 
 # Use gunicorn to run the app
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+
