@@ -8,16 +8,18 @@ RUN apt-get update && \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+# Create data directory
+RUN mkdir -p /app/data/chroma_db
+
 # Copy requirements first
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy everything else
+# Copy application code
 COPY . .
 
-# Make start script executable
-COPY start.sh .
-RUN chmod +x start.sh
+# Environment variables
+ENV PORT=8080
 
-# Run the start script
-CMD ["./start.sh"]
+# Run the application
+CMD gunicorn --bind 0.0.0.0:$PORT src.app:app
