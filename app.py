@@ -173,8 +173,15 @@ def get_answer():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    port = os.getenv('PORT', '8000')  # Default to 8000
-    logger.info(f"Running on port: {port}")
-    app.run(host='0.0.0.0', port=int(port))
+    try:
+    port = int(os.environ.get('PORT', '8000'))
+    if port < 0 or port > 65535:
+        logger.warning(f"Invalid port {port}, using default 8000")
+        port = 8000
+except ValueError:
+    logger.warning(f"Invalid PORT environment variable, using default 8000")
+    port = 8000
+    app.run(host='0.0.0.0', port=port)
+
 
 

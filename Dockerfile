@@ -1,5 +1,4 @@
 FROM python:3.10-slim
-
 WORKDIR /app
 
 # Install system dependencies
@@ -18,13 +17,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy entire project
 COPY . /app/
 
-# Expose port
-EXPOSE 8000
+# Remove the explicit PORT environment variable since Railway will provide it
+# ENV PORT=8000 <- Remove this line
 
-# Environment variables
-ENV PORT=8000
+# Keep this for Python logging
 ENV PYTHONUNBUFFERED=1
 
-# Use gunicorn to run the app
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT} app:app"]
-
+# Modified CMD to handle PORT more reliably
+CMD gunicorn --bind "0.0.0.0:${PORT:-8000}" app:app
