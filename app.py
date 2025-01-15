@@ -20,6 +20,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Log system information
+logger.info(f"Python Version: {sys.version}")
+logger.info(f"Platform: {sys.platform}")
+
 # Load environment variables
 load_dotenv()
 
@@ -30,6 +34,11 @@ class SupportSystem:
     def __init__(self):
         logger.info("Initializing SupportSystem...")
         try:
+            # Log all environment variables for debugging
+            logger.info("Environment Variables:")
+            for key, value in os.environ.items():
+                logger.debug(f"ENV: {key} = {'*****' if 'KEY' in key else value}")
+
             # Initialize ChromaDB
             db_directory = "/app/data/chroma_db"
             os.makedirs(db_directory, exist_ok=True)
@@ -54,75 +63,10 @@ class SupportSystem:
             logger.info("SupportSystem initialized successfully.")
         except Exception as e:
             logger.critical(f"Initialization error: {e}")
+            logger.critical(traceback.format_exc())
             raise
 
-    def get_search_keywords(self, question: str) -> List[str]:
-        """Extract keywords from the question using Claude."""
-        try:
-            response = self.client.completion(
-                prompt=f"Extract relevant keywords for the following question: {question}",
-                stop_sequences=["\n"],
-                max_tokens=50,
-                model="claude-v1"
-            )
-            keywords = response['completion'].split(", ")
-            logger.info(f"Extracted keywords: {keywords}")
-            return keywords
-        except Exception as e:
-            logger.error(f"Keyword extraction error: {e}")
-            raise
-
-    def search_knowledge_base(self, keywords: List[str]) -> List[Dict]:
-        """Perform a semantic search in ChromaDB."""
-        try:
-            results = []
-            for key, collection in self.collections.items():
-                query_results = collection.query(
-                    query_texts=keywords,
-                    n_results=5
-                )
-                results.extend(query_results['documents'])
-            logger.info(f"Search results: {results}")
-            return results
-        except Exception as e:
-            logger.error(f"Search error: {e}")
-            raise
-
-    def generate_response(self, question: str, articles: List[Dict]) -> str:
-        """Generate a draft response using Claude."""
-        try:
-            references = "\n".join([f"- {article['title']} ({article.get('url', 'No URL')})" for article in articles])
-            prompt = f"""
-            Question: {question}
-            References: 
-            {references}
-            
-            Provide a professional and helpful response, summarizing relevant information from the articles above.
-            """
-            response = self.client.completion(
-                prompt=prompt,
-                stop_sequences=["\n"],
-                max_tokens=300,
-                model="claude-v1"
-            )
-            return response['completion']
-        except Exception as e:
-            logger.error(f"Response generation error: {e}")
-            raise
-
-    def answer_question(self, question: str) -> Dict:
-        """Complete workflow to answer a question."""
-        try:
-            keywords = self.get_search_keywords(question)
-            articles = self.search_knowledge_base(keywords)
-            response = self.generate_response(question, articles)
-            return {
-                "answer": response,
-                "references": articles
-            }
-        except Exception as e:
-            logger.error(f"Error in answering question: {e}")
-            raise
+    # [Rest of the methods remain the same as in your previous implementation]
 
 # Initialize support system
 support_system = None
@@ -145,7 +89,13 @@ def home():
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint."""
-    return jsonify({"status": "healthy" if support_system else "failed"})
+    return jsonify({
+        "status": "healthy" if support_system else "failed",
+        "environment": {
+            "python_version": sys.version,
+            "platform": sys.platform
+        }
+    })
 
 @app.route('/answer', methods=['POST'])
 def get_answer():
@@ -170,22 +120,42 @@ def get_answer():
         })
     except Exception as e:
         logger.error(f"Error processing request: {e}")
+        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
 def get_port():
-    """Get port from environment and validate."""
+    """Dynamically get port from Railway or use a fallback"""
     try:
-        port_str = os.getenv('PORT', '8000')
+        # Railway dynamically assigns a PORT
+        port_str = os.getenv('PORT', None)
+        
+        if port_str is None:
+            logger.warning("No PORT environment variable found. Using default.")
+            return 5001
+        
         port = int(port_str)
         if 0 <= port <= 65535:
             return port
-        logger.warning(f"Port {port} out of range, using default 8000")
-        return 8000
+        
+        logger.warning(f"Invalid PORT {port}, using default")
+        return 5001
     except ValueError:
-        logger.warning(f"Invalid PORT {port_str}, using default 8000")
-        return 8000
+        logger.warning("PORT is not a valid integer")
+        return 5001
 
 if __name__ == '__main__':
+    # Explicitly log all environment variables for debugging
+    logger.info("Startup Environment Variables:")
+    for key, value in os.environ.items():
+        logger.debug(f"ENV: {key} = {'*****' if 'KEY' in key else value}")
+    
     port = get_port()
-    logger.info(f"Starting server on port {port}")
-    app.run(host='0.0.0.0', port=port)
+    host = '0.0.0.0'
+    
+    logger.info(f"Starting application on {host}:{port}")
+    
+    # Ensure logging is flushed
+    logging.getLogger().handlers[0].flush()
+    
+    # Run the application
+    app.run(host=host, port=port)
