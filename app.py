@@ -129,7 +129,7 @@ support_system = None
 try:
     support_system = SupportSystem()
 except Exception as e:
-    logger.critical("SupportSystem initialization failed.")
+    logger.critical(f"SupportSystem initialization failed: {e}")
 
 @app.route('/')
 def home():
@@ -172,16 +172,20 @@ def get_answer():
         logger.error(f"Error processing request: {e}")
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
+def get_port():
+    """Get port from environment and validate."""
     try:
-    port = int(os.environ.get('PORT', '8000'))
-    if port < 0 or port > 65535:
-        logger.warning(f"Invalid port {port}, using default 8000")
-        port = 8000
-except ValueError:
-    logger.warning(f"Invalid PORT environment variable, using default 8000")
-    port = 8000
+        port_str = os.getenv('PORT', '8000')
+        port = int(port_str)
+        if 0 <= port <= 65535:
+            return port
+        logger.warning(f"Port {port} out of range, using default 8000")
+        return 8000
+    except ValueError:
+        logger.warning(f"Invalid PORT {port_str}, using default 8000")
+        return 8000
+
+if __name__ == '__main__':
+    port = get_port()
+    logger.info(f"Starting server on port {port}")
     app.run(host='0.0.0.0', port=port)
-
-
-

@@ -17,11 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy entire project
 COPY . /app/
 
-# Remove the explicit PORT environment variable since Railway will provide it
-# ENV PORT=8000 <- Remove this line
-
-# Keep this for Python logging
+# IMPORTANT: Remove any ENV PORT setting
 ENV PYTHONUNBUFFERED=1
 
-# Modified CMD to handle PORT more reliably
-CMD gunicorn --bind "0.0.0.0:${PORT:-8000}" app:app
+# This specific CMD format often fixes the Railway port issue
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:$PORT app:app"]
